@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal - ClockIt</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Shared Styles -->
+    <link href="styles.css?v=7" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Employee Portal</h1>
+            <div>
+                <button id="themeToggle" class="btn btn-secondary me-2">Toggle Theme</button>
+                <button id="logoutButton" class="btn btn-secondary">Logout</button>
+            </div>
+        </div>
+        <h3>Time Card for (<span id="employeeId"></span>)</h3>
+        <!-- Message Area -->
+        <div id="messageArea" class="alert d-none" role="alert"></div>
+        <!-- Punch Status -->
+        <div id="punchStatus" class="alert" role="alert">
+            Loading punch status...
+        </div>
+        <button id="punchButton" class="btn btn-success" onclick="employeePunch()">Punch In</button>
+        <textarea id="notesArea" class="form-control" rows="2" placeholder="Enter notes here..." disabled></textarea>
+        <button id="submitNotesButton" class="btn btn-primary" onclick="submitNotes()" style="display: none; margin: 0 auto 20px auto; width: 200px;">Submit Notes</button>
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <select id="payPeriodSelect" class="form-select" onchange="loadTimeCard()">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>In</th>
+                        <th>Out</th>
+                        <th>Status</th>
+                        <th>Reg</th>
+                        <th>Total</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="timeCardTable">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script>
+        let employeeId = null;
+        let isPunchedIn = false;
+        let lastPunchTime = null;
+        let lastPunchId = null;
+
+        // Theme toggle functionality
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Load saved theme from localStorage
+            const savedTheme = localStorage.getItem("theme") || "light";
+            document.documentElement.setAttribute("data-theme", savedTheme);
+            updateThemeButton(savedTheme);
+
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/current-user");
+                const data = await response.json();
+                if (!data.loggedIn) {
+                    window.location.href = "login.html";
+                } else if (data.role !== "Employee") {
+                    window.location.href = "admin.html";
+                } else {
+                    employeeId = data.employee_id;
+                    document.getElementById("employeeId").textContent = employeeId;
+                    await loadPayPeriods();
+                    await checkPunchStatus();
+                    loadTimeCard();
+                }
+            } catch (error) {
+                console.error("Error checking user status:", error);
+                window.location.href = "login.html";
+            }
+        });
+
+        document.getElementById("themeToggle").addEventListener("click", () => {
+            const currentTheme = document.documentElement.getAttribute("data-theme");
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            document.documentElement.setAttribute("data-theme", newTheme);
+            localStorage.setItem("theme", newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        function updateThemeButton(theme) {
+            const button = document.getElementById("themeToggle");
+            button.textContent = theme === "light" ? "Dark Theme" : "Light Theme";
+        }
+
+        // Logout functionality
+        document.getElementById("logoutButton").addEventListener("click", async () => {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/logout", {
+                    method: "POST"
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = "login.html";
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                showMessage("Failed to log out.", "error");
+            }
+        });
+
+        // Check punch status
+        async function checkPunchStatus() {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/currently-punched-in");
+                const data = await response.json();
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    return;
+                }
+                const employee = data.employees.find(emp => emp.employee_id === employeeId);
+                const punchStatus = document.getElementById("punchStatus");
+                const punchButton = document.getElementById("punchButton");
+                const notesArea = document.getElementById("notesArea");
+                const submitNotesButton = document.getElementById("submitNotesButton");
+
+                if (employee) {
+                    isPunchedIn = true;
+                    lastPunchTime = parseUTCTimestamp(employee.punched_in_at);
+                    lastPunchId = employee.last_punch_id || null;
+                    punchStatus.classList.remove("alert-info", "alert-success");
+                    punchStatus.classList.add("alert-success");
+                    punchStatus.innerHTML = `Current login time was ${lastPunchTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })} on ${lastPunchTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. <br>Time since punch: <span id="punchDuration"></span>`;
+                    punchButton.textContent = "Punch Out";
+                    punchButton.classList.remove("btn-success");
+                    punchButton.classList.add("btn-danger");
+                    notesArea.disabled = false;
+                    submitNotesButton.style.display = "block";
+                    updatePunchDuration();
+                } else {
+                    isPunchedIn = false;
+                    lastPunchTime = null;
+                    lastPunchId = null;
+                    punchStatus.classList.remove("alert-success", "alert-info");
+                    punchStatus.classList.add("alert-info");
+                    punchStatus.textContent = "You are not scheduled for today.";
+                    punchButton.textContent = "Punch In";
+                    punchButton.classList.remove("btn-danger");
+                    punchButton.classList.add("btn-success");
+                    notesArea.disabled = true;
+                    submitNotesButton.style.display = "none";
+                    notesArea.value = "";
+                }
+            } catch (error) {
+                console.error("Error checking punch status:", error);
+                showMessage("Failed to check punch status.", "error");
+            }
+        }
+
+        // Update punch duration
+        function updatePunchDuration() {
+            if (!isPunchedIn || !lastPunchTime) return;
+            const now = new Date();
+            const diff = now - lastPunchTime;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            document.getElementById("punchDuration").textContent = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            setTimeout(updatePunchDuration, 1000);
+        }
+
+        // Employee punch (clock in/out)
+        async function employeePunch() {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/employee-punch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(data.message, "success");
+                    await checkPunchStatus();
+                    loadTimeCard();
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error performing employee punch:", error);
+                showMessage("Failed to perform punch.", "error");
+            }
+        }
+
+        // Submit notes for the current punch
+        async function submitNotes() {
+            const notes = document.getElementById("notesArea").value.trim();
+            if (!notes || !lastPunchId) {
+                showMessage("No notes to submit or no active punch.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.delectiomnibus.fyi/punch/${lastPunchId}/notes`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ notes })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(data.message, "success");
+                    document.getElementById("notesArea").value = "";
+                    loadTimeCard();
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error submitting notes:", error);
+                showMessage("Failed to submit notes.", "error");
+            }
+        }
+
+        // Load pay periods
+        async function loadPayPeriods() {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/pay-periods");
+                const data = await response.json();
+                const payPeriodSelect = document.getElementById("payPeriodSelect");
+                payPeriodSelect.innerHTML = "";
+                data.pay_periods.forEach(period => {
+                    const option = document.createElement("option");
+                    option.value = period.start_date;
+                    option.textContent = `${period.start_date} - ${period.end_date}`;
+                    payPeriodSelect.appendChild(option);
+                });
+                if (data.pay_periods.length > 0) {
+                    payPeriodSelect.value = data.pay_periods[0].start_date;
+                }
+            } catch (error) {
+                console.error("Error fetching pay periods:", error);
+                showMessage("Failed to fetch pay periods.", "error");
+            }
+        }
+
+        // Helper function to parse SQLite UTC timestamp and convert to local time
+        function parseUTCTimestamp(timestamp) {
+            const isoTimestamp = timestamp.replace(" ", "T") + ".000Z";
+            return new Date(isoTimestamp);
+        }
+
+        // Load time card for the selected pay period
+        async function loadTimeCard() {
+            if (!employeeId) {
+                showMessage("Employee ID not available.", "error");
+                return;
+            }
+
+            const payPeriod = document.getElementById("payPeriodSelect").value;
+            if (!payPeriod) {
+                console.log("No pay period selected yet.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.delectiomnibus.fyi/timecard/${employeeId}`);
+                const data = await response.json();
+                console.log("Timecard data received:", data);
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    if (response.status === 401 || response.status === 403) {
+                        window.location.href = "login.html";
+                    }
+                    return;
+                }
+                const punches = data.punches;
+
+                const periodStart = new Date(payPeriod);
+                const periodEnd = new Date(periodStart);
+                periodEnd.setDate(periodStart.getDate() + 14);
+
+                const filteredPunches = punches.filter(punch => {
+                    const punchDate = parseUTCTimestamp(punch.timestamp);
+                    return punchDate >= periodStart && punchDate <= periodEnd;
+                });
+
+                const timeCardTable = document.getElementById("timeCardTable");
+                timeCardTable.innerHTML = "";
+                let currentIn = null;
+                let currentWeekStart = new Date(periodStart);
+                let weekPunches = [];
+                let weekNumber = 1;
+                let notesForPair = "";
+
+                filteredPunches.forEach((punch, index) => {
+                    const punchTime = parseUTCTimestamp(punch.timestamp);
+
+                    if (punch.type === "in") {
+                        notesForPair = punch.notes || "";
+                    } else if (punch.type === "out") {
+                        notesForPair = punch.notes || notesForPair;
+                    }
+
+                    if (punchTime >= new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000) || index === filteredPunches.length - 1) {
+                        if (weekPunches.length > 0 || index === filteredPunches.length - 1) {
+                            const weekRow = document.createElement("tr");
+                            weekRow.classList.add("week-header");
+                            weekRow.innerHTML = `<td colspan="6">Week ${weekNumber} (${currentWeekStart.toLocaleDateString()} - ${new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString()})</td>`;
+                            timeCardTable.appendChild(weekRow);
+
+                            let weekIn = null;
+                            let totalRegHours = 0;
+                            weekPunches.forEach(p => {
+                                const pTime = parseUTCTimestamp(p.timestamp);
+                                if (p.type === "in") {
+                                    weekIn = pTime;
+                                    notesForPair = p.notes || "";
+                                } else if (p.type === "out" && weekIn) {
+                                    const punchOut = pTime;
+                                    const diffMs = punchOut - weekIn;
+                                    const hours = diffMs / (1000 * 60 * 60);
+                                    const minutes = (diffMs / (1000 * 60)) % 60;
+                                    const totalHours = hours + (minutes / 60);
+                                    if (totalHours >= 0) {
+                                        totalRegHours += totalHours;
+                                    }
+                                    if (p.notes) {
+                                        notesForPair = p.notes;
+                                    }
+                                    const row = document.createElement("tr");
+                                    row.innerHTML = `
+                                        <td>${weekIn.toLocaleString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</td>
+                                        <td>${punchOut.toLocaleString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</td>
+                                        <td>${p.updated_by ? "Changed By Manager" : ""}</td>
+                                        <td>${totalHours.toFixed(2)}</td>
+                                        <td>${totalHours.toFixed(2)}</td>
+                                        <td>${notesForPair}</td>
+                                    `;
+                                    timeCardTable.appendChild(row);
+                                    weekIn = null;
+                                    notesForPair = "";
+                                }
+                            });
+
+                            if (weekIn) {
+                                const row = document.createElement("tr");
+                                row.innerHTML = `
+                                    <td>${weekIn.toLocaleString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>-</td>
+                                    <td>${notesForPair}</td>
+                                `;
+                                timeCardTable.appendChild(row);
+                            }
+
+                            const totalRow = document.createElement("tr");
+                            totalRow.classList.add("week-header");
+                            totalRow.innerHTML = `
+                                <td colspan="3">Week Total</td>
+                                <td>${totalRegHours.toFixed(2)}</td>
+                                <td>${totalRegHours.toFixed(2)}</td>
+                                <td>-</td>
+                            `;
+                            timeCardTable.appendChild(totalRow);
+                        }
+                        weekPunches = [];
+                        currentWeekStart = new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+                        weekNumber++;
+                    }
+
+                    weekPunches.push(punch);
+                });
+            } catch (error) {
+                console.error("Error fetching time card:", error);
+                showMessage("Failed to fetch time card.", "error");
+            }
+        }
+
+        // Helper function to show a message on the page
+        function showMessage(message, type) {
+            const messageArea = document.getElementById("messageArea");
+            messageArea.textContent = message;
+            messageArea.classList.remove("d-none");
+            messageArea.classList.remove("success", "error");
+            messageArea.classList.add(type);
+            setTimeout(() => {
+                messageArea.classList.add("d-none");
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

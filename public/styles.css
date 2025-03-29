@@ -1,0 +1,271 @@
+/* Default to light theme */
+:root {
+    --background-color: #f8f9fa;
+    --text-color: #212529;
+    --container-bg: #ffffff;
+    --container-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    --table-header-bg: #e9ecef;
+    --table-border-color: #dee2e6;
+    --alert-success-bg: #d4edda;
+    --alert-success-text: #155724;
+    --alert-success-border: #c3e6cb;
+    --alert-error-bg: #f8d7da;
+    --alert-error-text: #721c24;
+    --alert-error-border: #f5c6cb;
+    --button-primary-bg: #007bff;
+    --button-primary-text: #ffffff;
+    --button-primary-hover-bg: #0056b3;
+    --button-secondary-bg: #6c757d;
+    --button-secondary-text: #ffffff;
+    --button-secondary-hover-bg: #5a6268;
+    --input-bg: #ffffff;
+    --input-text: #212529;
+    --input-border: #ced4da;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+    --background-color: #212529;
+    --text-color: #f8f9fa;
+    --container-bg: #343a40;
+    --container-shadow: 0 4px 8px rgba(255, 255, 255, 0.05);
+    --table-header-bg: #7d868e;
+    --table-border-color: #343a40;
+    --table-cell-bg: #5a6268;
+    --alert-success-bg: #3a834f;
+    --alert-success-text: #d4edda;
+    --alert-success-border: #1a3c24;
+    --alert-error-bg: #c13541;
+    --alert-error-text: #f8d7da;
+    --alert-error-border: #721c24;
+    --button-primary-bg: #0056b3;
+    --button-primary-text: #ffffff;
+    --button-primary-hover-bg: #003d82;
+    --button-secondary-bg: #5a6268;
+    --button-secondary-text: #ffffff;
+    --button-secondary-hover-bg: #4b5156;
+    --input-bg: #5a6268;
+    --input-text: #f8f9fa;
+    --input-border: #6c757d;
+}
+
+/* Apply theme variables */
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding: 20px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container {
+    background-color: var(--container-bg);
+    box-shadow: var(--container-shadow);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.table-container {
+    background-color: var(--container-bg);
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: var(--container-shadow);
+    margin-bottom: 20px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.table-container h3 {
+    margin-bottom: 20px;
+}
+
+.table {
+    color: var(--text-color);
+    border-color: var(--table-border-color);
+}
+
+.table th {
+    background-color: var(--table-header-bg);
+    color: var(--text-color);
+    border-color: var(--table-border-color);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 12px;
+}
+
+.table td {
+    border-color: var(--table-border-color);
+    background-color: var(--table-cell-bg, transparent);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Center and bold the Status column (index 4 in timecard.html, nth-child(5) in CSS) */
+.table tbody tr td:nth-child(5) {
+    text-align: center !important;
+    font-weight: bold !important;
+}
+
+/* Highlight rows that were changed by a manager */
+.table tbody tr td:nth-child(5):not(:empty) {
+    background-color: rgba(255, 165, 0, 0.1) !important;
+}
+
+[data-theme="dark"] .table tbody tr td:nth-child(5):not(:empty) {
+    background-color: rgba(255, 165, 0, 0.2) !important;
+    color: #d3d3d3 !important; /* Light grey text for "Changed By Manager" */
+}
+
+/* Row hover effects */
+.table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.3);
+}
+
+/* Ensure the td background is transparent during hover to show the tr hover color */
+.table tbody tr:hover td {
+    background-color: transparent;
+}
+
+[data-theme="dark"] .table tbody tr:hover td {
+    background-color: transparent;
+}
+
+/* Highlight selected rows */
+.table tbody tr.selected {
+    background-color: rgba(0, 123, 255, 0.2);
+}
+
+[data-theme="dark"] .table tbody tr.selected {
+    background-color: rgba(0, 123, 255, 0.3);
+}
+
+/* Override Bootstrap's default table border color */
+.table-bordered, .table-bordered th, .table-bordered td {
+    border-color: var(--table-border-color) !important;
+}
+
+.week-header {
+    background-color: var(--table-header-bg);
+    font-weight: bold;
+}
+
+#messageArea {
+    max-width: 500px;
+    margin: 0 auto 20px auto;
+    text-align: center;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+#messageArea.success {
+    background-color: var(--alert-success-bg);
+    color: var(--alert-success-text);
+    border-color: var(--alert-success-border);
+}
+
+#messageArea.error {
+    background-color: var(--alert-error-bg);
+    color: var(--alert-error-text);
+    border-color: var(--alert-error-border);
+}
+
+#punchStatus {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.2em;
+}
+
+#punchButton {
+    display: block;
+    margin: 0 auto 20px auto;
+    width: 200px;
+}
+
+#notesArea {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 20px auto;
+    display: block;
+}
+
+.btn-primary {
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    border: none;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--button-primary-hover-bg);
+}
+
+.btn-secondary {
+    background-color: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+    border: none;
+    transition: background-color 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: var(--button-secondary-hover-bg);
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: #212529 !important;
+    border: none;
+    transition: background-color 0.3s ease;
+}
+
+[data-theme="dark"] .btn-warning {
+    background-color: #e0a800;
+    color: #212529 !important;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+}
+
+[data-theme="dark"] .btn-warning:hover {
+    background-color: #c69500;
+}
+
+.form-control {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.form-control:focus {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--button-primary-bg);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.form-select {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.form-select:focus {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--button-primary-bg);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Login page specific styles */
+.login-container {
+    background-color: var(--container-bg);
+    padding: 30px;
+    border-radius: 5px;
+    box-shadow: var(--container-shadow);
+    width: 100%;
+    max-width: 400px;
+    margin: auto;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ClockIt</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Shared Styles -->
+    <link href="styles.css?v=7" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Admin Dashboard</h1>
+            <div>
+                <button id="themeToggle" class="btn btn-secondary me-2">Toggle Theme</button>
+                <button id="logoutButton" class="btn btn-secondary">Logout</button>
+            </div>
+        </div>
+        <!-- Message Area -->
+        <div id="messageArea" class="alert d-none" role="alert"></div>
+        <!-- Manage Employees -->
+        <div class="table-container">
+            <h3>Manage Employees</h3>
+            <div class="row mb-3">
+                <div class="col-md-5">
+                    <input type="text" id="employeeName" class="form-control" placeholder="Employee Name">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="employeeId" class="form-control" placeholder="Employee ID">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="addEmployee()">Add Employee</button>
+                </div>
+            </div>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Action</th>
+                        <th>Clock In/Out</th>
+                    </tr>
+                </thead>
+                <tbody id="employeeTable">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Employees Currently Punched In -->
+        <div class="table-container">
+            <h3>Employees Currently Punched In</h3>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Punched In At</th>
+                    </tr>
+                </thead>
+                <tbody id="punchedInTable">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Employee Time Cards -->
+        <div class="table-container">
+            <h3>Employee Time Cards</h3>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Total Hours</th>
+                    </tr>
+                </thead>
+                <tbody id="timeCardTable">
+                    <!-- Populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script>
+        let currentPayPeriod = null;
+
+        // Theme toggle functionality
+        document.addEventListener("DOMContentLoaded", async () => {
+            const savedTheme = localStorage.getItem("theme") || "light";
+            document.documentElement.setAttribute("data-theme", savedTheme);
+            updateThemeButton(savedTheme);
+
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/current-user");
+                const data = await response.json();
+                if (!data.loggedIn) {
+                    window.location.href = "login.html";
+                } else if (data.role !== "Admin") {
+                    window.location.href = "employee.html";
+                } else {
+                    loadEmployees();
+                    loadPunchedInEmployees();
+                    await loadPayPeriods();
+                    loadTimeCards();
+                }
+            } catch (error) {
+                console.error("Error checking user status:", error);
+                window.location.href = "login.html";
+            }
+        });
+
+        document.getElementById("themeToggle").addEventListener("click", () => {
+            const currentTheme = document.documentElement.getAttribute("data-theme");
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            document.documentElement.setAttribute("data-theme", newTheme);
+            localStorage.setItem("theme", newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        function updateThemeButton(theme) {
+            const button = document.getElementById("themeToggle");
+            button.textContent = theme === "light" ? "Dark Theme" : "Light Theme";
+        }
+
+        document.getElementById("logoutButton").addEventListener("click", async () => {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/logout", {
+                    method: "POST"
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = "login.html";
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                showMessage("Failed to log out.", "error");
+            }
+        });
+
+        async function loadEmployees() {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/employees");
+                const data = await response.json();
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    return;
+                }
+                const employeeTable = document.getElementById("employeeTable");
+                employeeTable.innerHTML = "";
+                data.employees.forEach(employee => {
+                    const row = employeeTable.insertRow();
+                    const idCell = row.insertCell(0);
+                    idCell.textContent = employee.employee_id;
+                    const nameCell = row.insertCell(1);
+                    const nameLink = document.createElement("a");
+                    nameLink.href = `employee-profile.html?employee_id=${employee.employee_id}`;
+                    nameLink.textContent = employee.name;
+                    nameCell.appendChild(nameLink);
+                    const actionCell = row.insertCell(2);
+                    const deleteButton = document.createElement("button");
+                    deleteButton.className = "btn btn-danger btn-sm";
+                    deleteButton.textContent = "Delete";
+                    deleteButton.onclick = () => deleteEmployee(employee.employee_id);
+                    actionCell.appendChild(deleteButton);
+                    const clockCell = row.insertCell(3);
+                    const clockButton = document.createElement("button");
+                    clockButton.className = "btn btn-success btn-sm";
+                    clockButton.textContent = "Clock In/Out";
+                    clockButton.onclick = () => adminPunch(employee.employee_id);
+                    clockCell.appendChild(clockButton);
+                });
+            } catch (error) {
+                console.error("Error fetching employees:", error);
+                showMessage("Failed to fetch employees.", "error");
+            }
+        }
+
+        async function addEmployee() {
+            const name = document.getElementById("employeeName").value.trim();
+            const employeeId = document.getElementById("employeeId").value.trim();
+            if (!name || !employeeId) {
+                showMessage("Name and Employee ID are required.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/employees", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, employee_id: employeeId })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage("Employee added successfully.", "success");
+                    document.getElementById("employeeName").value = "";
+                    document.getElementById("employeeId").value = "";
+                    loadEmployees();
+                    loadPunchedInEmployees();
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error adding employee:", error);
+                showMessage("Failed to add employee.", "error");
+            }
+        }
+
+        async function deleteEmployee(employeeId) {
+            if (!confirm(`Are you sure you want to delete employee ${employeeId}?`)) return;
+
+            try {
+                const response = await fetch(`http://https://api.delectiomnibus.fyi/${employeeId}`, {
+                    method: "DELETE"
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage("Employee deleted successfully.", "success");
+                    loadEmployees();
+                    loadPunchedInEmployees();
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error deleting employee:", error);
+                showMessage("Failed to delete employee.", "error");
+            }
+        }
+
+        async function adminPunch(employeeId) {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/admin-punch", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ employee_id: employeeId })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(data.message, "success");
+                    loadPunchedInEmployees();
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error performing admin punch:", error);
+                showMessage("Failed to perform admin punch.", "error");
+            }
+        }
+
+        async function loadPunchedInEmployees() {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/currently-punched-in");
+                const data = await response.json();
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    return;
+                }
+                const punchedInTable = document.getElementById("punchedInTable");
+                punchedInTable.innerHTML = "";
+                data.employees.forEach(employee => {
+                    const row = punchedInTable.insertRow();
+                    row.insertCell(0).textContent = employee.employee_id;
+                    row.insertCell(1).textContent = employee.name;
+                    const punchedInAt = new Date(employee.punched_in_at.replace(" ", "T") + ".000Z");
+                    row.insertCell(2).textContent = punchedInAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                });
+            } catch (error) {
+                console.error("Error fetching punched-in employees:", error);
+                showMessage("Failed to fetch punched-in employees.", "error");
+            }
+        }
+
+        async function loadPayPeriods() {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/pay-periods");
+                const data = await response.json();
+                if (!data.pay_periods || data.pay_periods.length === 0) {
+                    showMessage("No pay periods available.", "error");
+                    return;
+                }
+                currentPayPeriod = data.pay_periods[0].start_date;
+            } catch (error) {
+                console.error("Error fetching pay periods:", error);
+                showMessage("Failed to fetch pay periods.", "error");
+            }
+        }
+
+        async function loadTimeCards() {
+            if (!currentPayPeriod) {
+                console.log("No current pay period available.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.delectiomnibus.fyi/time-cards?pay_period=${currentPayPeriod}`);
+                const data = await response.json();
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    return;
+                }
+                const timeCardTable = document.getElementById("timeCardTable");
+                timeCardTable.innerHTML = "";
+                data.timeCards.forEach(card => {
+                    const row = timeCardTable.insertRow();
+                    row.style.cursor = "pointer";
+                    row.onclick = () => {
+                        window.location.href = `timecard.html?pay_period=${currentPayPeriod}&employee_id=${card.employee_id}`;
+                    };
+                    row.insertCell(0).textContent = card.employee_id;
+                    row.insertCell(1).textContent = card.name;
+                    row.insertCell(2).textContent = card.total_hours;
+                });
+            } catch (error) {
+                console.error("Error fetching time cards:", error);
+                showMessage("Failed to fetch time cards.", "error");
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageArea = document.getElementById("messageArea");
+            messageArea.textContent = message;
+            messageArea.classList.remove("d-none");
+            messageArea.classList.remove("success", "error");
+            messageArea.classList.add(type);
+            setTimeout(() => {
+                messageArea.classList.add("d-none");
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

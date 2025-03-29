@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Profile - ClockIt</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Shared Styles -->
+    <link href="styles.css?v=7" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Employee Profile</h1>
+            <div>
+                <button id="themeToggle" class="btn btn-secondary me-2">Toggle Theme</button>
+                <button id="logoutButton" class="btn btn-secondary">Logout</button>
+            </div>
+        </div>
+        <!-- Message Area -->
+        <div id="messageArea" class="alert d-none" role="alert"></div>
+        <!-- Employee Details -->
+        <h3>Employee Details</h3>
+        <div id="employeeDetails" class="mb-4">
+            <!-- Populated dynamically -->
+        </div>
+        <!-- User Account Management -->
+        <h3>User Account</h3>
+        <form id="userForm">
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password (leave blank to keep unchanged)</label>
+                <input type="password" class="form-control" id="password">
+            </div>
+            <button type="submit" class="btn btn-primary">Create/Update User Account</button>
+        </form>
+        <a href="admin.html" class="btn btn-secondary mt-3">Back to Admin Dashboard</a>
+    </div>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script>
+        let employeeId = null;
+
+        // Theme toggle functionality
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Load saved theme from localStorage
+            const savedTheme = localStorage.getItem("theme") || "light";
+            document.documentElement.setAttribute("data-theme", savedTheme);
+            updateThemeButton(savedTheme);
+
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/current-user");
+                const data = await response.json();
+                if (!data.loggedIn) {
+                    window.location.href = "login.html";
+                } else if (data.role !== "Admin") {
+                    window.location.href = "employee.html";
+                } else {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    employeeId = urlParams.get("employee_id");
+                    console.log("Employee ID from URL:", employeeId);
+                    if (!employeeId) {
+                        showMessage("Employee ID not provided.", "error");
+                        return;
+                    }
+                    loadEmployeeDetails();
+                    loadUserDetails();
+                }
+            } catch (error) {
+                console.error("Error checking user status:", error);
+                window.location.href = "login.html";
+            }
+        });
+
+        document.getElementById("themeToggle").addEventListener("click", () => {
+            const currentTheme = document.documentElement.getAttribute("data-theme");
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            document.documentElement.setAttribute("data-theme", newTheme);
+            localStorage.setItem("theme", newTheme);
+            updateThemeButton(newTheme);
+        });
+
+        function updateThemeButton(theme) {
+            const button = document.getElementById("themeToggle");
+            button.textContent = theme === "light" ? "Dark Theme" : "Light Theme";
+        }
+
+        document.getElementById("logoutButton").addEventListener("click", async () => {
+            try {
+                const response = await fetch("https://api.delectiomnibus.fyi/logout", {
+                    method: "POST"
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = "login.html";
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error logging out:", error);
+                showMessage("Failed to log out.", "error");
+            }
+        });
+
+        async function loadEmployeeDetails() {
+            try {
+                const response = await fetch(`https://api.delectiomnibus.fyi/timecard/${employeeId}`);
+                const data = await response.json();
+                console.log("Employee data received:", data);
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    return;
+                }
+                const employee = data.employee;
+                const employeeDetails = document.getElementById("employeeDetails");
+                employeeDetails.innerHTML = `
+                    <p><strong>Employee ID:</strong> ${employee.employee_id}</p>
+                    <p><strong>Name:</strong> ${employee.name}</p>
+                `;
+            } catch (error) {
+                console.error("Error fetching employee details:", error);
+                showMessage("Failed to fetch employee details.", "error");
+            }
+        }
+
+        async function loadUserDetails() {
+            try {
+                const response = await fetch(`https://api.delectiomnibus.fyi/user-for-employee/${employeeId}`);
+                const data = await response.json();
+                console.log("User data received:", data);
+                if (!response.ok) {
+                    showMessage(data.error, "error");
+                    return;
+                }
+                const user = data.user;
+                if (user) {
+                    document.getElementById("username").value = user.username;
+                }
+            } catch (error) {
+                console.error("Error fetching user details:", error);
+                showMessage("Failed to fetch user details.", "error");
+            }
+        }
+
+        document.getElementById("userForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            if (!username) {
+                showMessage("Username is required.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.delectiomnibus.fyi/user-for-employee/${employeeId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(data.message, "success");
+                    document.getElementById("password").value = "";
+                } else {
+                    showMessage(data.error, "error");
+                }
+            } catch (error) {
+                console.error("Error creating/updating user:", error);
+                showMessage("Failed to create/update user.", "error");
+            }
+        });
+
+        function showMessage(message, type) {
+            const messageArea = document.getElementById("messageArea");
+            messageArea.textContent = message;
+            messageArea.classList.remove("d-none");
+            messageArea.classList.remove("success", "error");
+            messageArea.classList.add(type);
+            setTimeout(() => {
+                messageArea.classList.add("d-none");
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
