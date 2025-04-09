@@ -64,31 +64,32 @@
         }
 
         document.getElementById("loginForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+    e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-            try {
-                const response = await fetch("https://api.delectiomnibus.fyi/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    if (data.role === "Admin") {
-                        window.location.href = "admin.html";
-                    } else {
-                        window.location.href = "employee.html";
-                    }
-                } else {
-                    showMessage(data.error, "error");
-                }
-            } catch (error) {
-                console.error("Error logging in:", error);
-                showMessage("Failed to log in.", "error");
-            }
+    try {
+        const response = await fetch("http://api.delectiomnibus.fyi/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
         });
+        const data = await response.json();
+        if (response.ok) {
+            if (data.role === "Admin") {
+                window.location.href = "admin.html";
+            } else {
+                window.location.href = "employee.html";
+            }
+        } else {
+            showMessage(data.error, "error");
+        }
+    } catch (error) {
+        console.error("Error logging in:", error);
+        showMessage("Failed to log in.", "error");
+    }
+});
 
         function showMessage(message, type) {
             const messageArea = document.getElementById("messageArea");
