@@ -95,7 +95,7 @@
             updateThemeButton(savedTheme);
 
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/current-user", {
+                const response = await fetch("https://api.delectiomnibus.fyi/current-user", {
                     credentials: 'include'
                 });
                 const data = await response.json();
@@ -130,7 +130,7 @@
 
         document.getElementById("logoutButton").addEventListener("click", async () => {
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/logout", {
+                const response = await fetch("https://api.delectiomnibus.fyi/logout", {
                     method: "POST",
                     credentials: 'include'
                 });
@@ -148,7 +148,7 @@
 
         async function loadEmployees() {
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/employees", {
+                const response = await fetch("https://api.delectiomnibus.fyi/employees", {
                     credentials: 'include'
                 });
                 const data = await response.json();
@@ -195,7 +195,7 @@
             }
 
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/employees", {
+                const response = await fetch("https://api.delectiomnibus.fyi/employees", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name, employee_id: employeeId }),
@@ -221,7 +221,7 @@
             if (!confirm(`Are you sure you want to delete employee ${employeeId}?`)) return;
 
             try {
-                const response = await fetch(`http://api.delectiomnibus.fyi/employees/${employeeId}`, {
+                const response = await fetch(`https://api.delectiomnibus.fyi/employees/${employeeId}`, {
                     method: "DELETE",
                     credentials: 'include'
                 });
@@ -241,7 +241,7 @@
 
         async function adminPunch(employeeId) {
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/admin-punch", {
+                const response = await fetch("https://api.delectiomnibus.fyi/admin-punch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ employee_id: employeeId }),
@@ -262,7 +262,7 @@
 
         async function loadPunchedInEmployees() {
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/currently-punched-in", {
+                const response = await fetch("https://api.delectiomnibus.fyi/currently-punched-in", {
                     credentials: 'include'
                 });
                 const data = await response.json();
@@ -287,7 +287,7 @@
 
         async function loadPayPeriods() {
             try {
-                const response = await fetch("http://api.delectiomnibus.fyi/pay-periods", {
+                const response = await fetch("https://api.delectiomnibus.fyi/pay-periods", {
                     credentials: 'include'
                 });
                 const data = await response.json();
@@ -309,7 +309,7 @@
             }
 
             try {
-                const response = await fetch(`http://api.delectiomnibus.fyi/time-cards?pay_period=${currentPayPeriod}`, {
+                const response = await fetch(`https://api.delectiomnibus.fyi/time-cards?pay_period=${currentPayPeriod}`, {
                     credentials: 'include'
                 });
                 const data = await response.json();
