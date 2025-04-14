@@ -71,7 +71,7 @@
             updateThemeButton(savedTheme);
 
             try {
-                const response = await fetch("https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/current-user");
+                const response = await fetch("http://localhost:3000/current-user");
                 const data = await response.json();
                 if (!data.loggedIn) {
                     window.location.href = "login.html";
@@ -106,7 +106,7 @@
         // Logout functionality
         document.getElementById("logoutButton").addEventListener("click", async () => {
             try {
-                const response = await fetch("https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/logout", {
+                const response = await fetch("http://localhost:3000/logout", {
                     method: "POST"
                 });
                 const data = await response.json();
@@ -124,7 +124,7 @@
         // Check punch status
         async function checkPunchStatus() {
             try {
-                const response = await fetch("https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/currently-punched-in");
+                const response = await fetch("http://localhost:3000/currently-punched-in");
                 const data = await response.json();
                 if (!response.ok) {
                     showMessage(data.error, "error");
@@ -184,7 +184,7 @@
         // Employee punch (clock in/out)
         async function employeePunch() {
             try {
-                const response = await fetch("https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/employee-punch", {
+                const response = await fetch("http://localhost:3000/employee-punch", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" }
                 });
@@ -211,7 +211,7 @@
             }
 
             try {
-                const response = await fetch(`https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/${lastPunchId}/notes`, {
+                const response = await fetch(`http://localhost:3000/${lastPunchId}/notes`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ notes })
@@ -233,7 +233,7 @@
         // Load pay periods
         async function loadPayPeriods() {
             try {
-                const response = await fetch("https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/pay-periods");
+                const response = await fetch("http://localhost:3000/pay-periods");
                 const data = await response.json();
                 const payPeriodSelect = document.getElementById("payPeriodSelect");
                 payPeriodSelect.innerHTML = "";
@@ -272,7 +272,7 @@
             }
 
             try {
-                const response = await fetch(`https://4403-2603-300a-91a-2040-311f-cb82-e5f5-7223.ngrok-free.app/timecard/${employeeId}`);
+                const response = await fetch(`http://localhost:3000/timecard/${employeeId}`);
                 const data = await response.json();
                 console.log("Timecard data received:", data);
                 if (!response.ok) {
